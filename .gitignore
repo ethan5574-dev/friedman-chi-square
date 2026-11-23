@@ -1,0 +1,15 @@
+# Python and editor output
+__pycache__/
+*.py[cod]
+.DS_Store
+~$*
+
+# LaTeX intermediates
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.toc
+*.xdv

@@ -1,0 +1,653 @@
+% !TeX program = xelatex
+% Báo cáo Thống kê ứng dụng. Lưu tệp dưới dạng UTF-8.
+% Biên dịch: xelatex Bao_cao_Friedman_ChiSquare.tex (chạy hai lượt) hoặc tectonic.
+% Chỉnh văn bản, công thức, bảng và thư mục tài liệu ngay trong tệp này.
+\documentclass[11pt,a4paper]{article}
+\usepackage[a4paper,left=18mm,right=18mm,top=19mm,bottom=19mm]{geometry}
+\usepackage{fontspec}
+\defaultfontfeatures{Ligatures=TeX}
+\usepackage[vietnamese]{babel}
+\usepackage{amsmath,amssymb}
+\usepackage[table]{xcolor}
+\usepackage{booktabs,tabularx,array}
+\usepackage{hyperref}
+
+\definecolor{ink}{HTML}{172F37}
+\definecolor{accent}{HTML}{076457}
+\definecolor{rust}{HTML}{9C442C}
+\definecolor{wash}{HTML}{EAF1EA}
+\definecolor{stripe}{HTML}{F3F5EF}
+\hypersetup{
+  colorlinks=true, linkcolor=accent, citecolor=accent, urlcolor=accent,
+  pdftitle={Kiểm định Friedman và chi bình phương Pearson}
+}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{4pt plus 1pt}
+\setlength{\emergencystretch}{2em}
+\setcounter{tocdepth}{1}
+\renewcommand{\arraystretch}{1.18}
+\addto\captionsvietnamese{\renewcommand{\contentsname}{Mục lục}}
+
+\newcommand{\ReportSection}[4]{%
+  \clearpage
+  \noindent{\sffamily\small\bfseries\textcolor{#4}{#2}}\par
+  \section*{\textcolor{ink}{#3}}%
+  \phantomsection\label{sec:#1}%
+  \addcontentsline{toc}{section}{#3}%
+}
+\newcommand{\ReportLead}[1]{{\large\itshape #1\par}\medskip}
+\newcommand{\ReportCaption}[1]{{\small\bfseries #1\par}\smallskip}
+\newcommand{\ResultBox}[2]{%
+  \medskip\noindent
+  \colorbox{wash}{\parbox{\dimexpr\linewidth-2\fboxsep\relax}{%
+    \textbf{\textcolor{accent}{#1}}\par #2}}%
+  \par\medskip
+}
+
+\begin{document}
+\color{ink}
+
+\begin{titlepage}
+\color{ink}
+{\large\sffamily\bfseries\textcolor{accent}{BÁO CÁO THỐNG KÊ ỨNG DỤNG}}\par
+\vspace{11mm}
+{\sffamily\bfseries\fontsize{33}{39}\selectfont
+  Kiểm định Friedman\\ và chi bình phương Pearson\par}
+\vspace{5mm}
+{\large Phương pháp, công thức và sáu ví dụ có lời giải\par}
+\vspace{8mm}
+\textcolor{accent}{\rule{\linewidth}{0.8pt}}
+\section*{Tóm tắt}
+Friedman so sánh các điều kiện trong cùng khối bằng hạng.
+Chi bình phương Pearson đối chiếu tần số quan sát với tần số kỳ vọng dưới một giả thuyết phân loại.
+Báo cáo trình bày cách chọn kiểm định, giải từng ví dụ từ bảng dữ liệu đến kết luận
+và nối phép tính với bản cài đặt Python.
+\tableofcontents
+\vfill
+Dữ liệu trong cả sáu ví dụ được giả lập cho mục đích minh họa.
+\end{titlepage}
+\setcounter{page}{2}
+
+\ReportSection{design}{Chọn kiểm định}{Thiết kế dữ liệu và giả thuyết}{accent}
+
+\ReportLead{Một hàng điểm ghép khối và một hàng tần số trả lời hai loại câu hỏi khác nhau.}
+
+Friedman dùng thứ tự của các phép đo trong cùng khối để so sánh điều kiện. Pearson dùng số đếm để đo độ
+lệch giữa dữ liệu với mô hình phân loại. Hai phương pháp đều có thể tham chiếu phân phối
+\ensuremath{\chi}\textsuperscript{2}, với thống kê và bậc tự do xuất phát từ thiết kế
+riêng.~\cite{ref-1,ref-2,ref-5,ref-6,ref-7}
+
+\subsection*{Bảng chọn phương pháp}
+
+\begingroup\small
+\rowcolors{2}{white}{stripe}
+\begin{tabularx}{\linewidth}{>{\hsize=1.016\hsize\linewidth=\hsize\raggedright\arraybackslash}X>{\hsize=0.791\hsize\linewidth=\hsize\raggedright\arraybackslash}X>{\hsize=1.193\hsize\linewidth=\hsize\raggedright\arraybackslash}X}
+\rowcolor{accent}
+  \textcolor{white}{\textbf{Cấu trúc dữ liệu}} & \textcolor{white}{\textbf{Kiểm định}} & \textcolor{white}{\textbf{Phép so sánh}} \\
+  \textbf{Từ 3 điều kiện, cùng các khối} & Friedman~\cite{ref-2} & Xếp hạng riêng trong từng khối. \\
+  \textbf{2 điều kiện ghép cặp, hiệu đối xứng} & Wilcoxon signed-rank~\cite{ref-9} & Gán dấu cho hạng của độ lớn hiệu. \\
+  \textbf{Nhiều nhóm độc lập, đáp ứng có thứ tự} & Kruskal-Wallis~\cite{ref-10} & Xếp hạng gộp để so sánh các nhóm. \\
+  \textbf{Các tần số từ quan sát độc lập} & Chi bình phương Pearson~\cite{ref-6,ref-7} & So sánh số đếm quan sát và kỳ vọng. \\
+  \textbf{Bảng độc lập 2 \ensuremath{\times} 2 có kỳ vọng thấp} & Fisher chính xác~\cite{ref-11} & Tính xác suất bảng với tổng biên cố định. \\
+  \textbf{2 kết quả nhị phân ghép cặp} & McNemar~\cite{ref-12} & Đối chiếu hai hướng thay đổi trong các cặp bất đồng. \\
+\bottomrule
+\end{tabularx}
+\endgroup
+
+\subsection*{Cách đọc kết quả}
+
+Chọn mức ý nghĩa \ensuremath{\alpha} trước khi xem kết quả. p-value là xác suất, theo mô hình
+H\textsubscript{0} và các giả định của kiểm định, thu được thống kê ít nhất cực đoan như quan sát. Các ví
+dụ đặt \ensuremath{\alpha} = 0,05 và dùng đuôi phải vì thống kê lớn biểu thị sai lệch lớn.
+
+\ResultBox{Quy tắc quyết định}{Bác bỏ H\textsubscript{0} khi p \ensuremath{\leq} \ensuremath{\alpha}. Khi p \textgreater{} \ensuremath{\alpha}, dữ liệu chưa đủ bằng chứng để bác bỏ H\textsubscript{0}. Kết luận phản ánh mức bằng chứng trong thiết kế khảo sát hoặc thí nghiệm đã dùng.}
+
+\ReportSection{friedman}{Phương pháp Friedman}{Hạng, tổng hạng và thống kê Q}{accent}
+
+\ReportLead{Mỗi khối chứa đúng một giá trị cho từng điều kiện. Những khối khác nhau được xem là độc lập.}
+
+\subsection*{1. Xếp hạng theo hàng}
+
+Ký hiệu x\textsubscript{ij} là phép đo ở khối i, điều kiện j. Trong mỗi hàng, gán hạng
+r\textsubscript{ij} từ 1 cho giá trị nhỏ nhất đến k cho giá trị lớn nhất. Các giá trị bằng nhau nhận
+trung bình của các hạng mà chúng chiếm. Chẳng hạn, hàng (5, 5, 4) cho hạng (2,5; 2,5;
+1).~\cite{ref-2,ref-3}
+
+\begin{equation}
+  R_{j} = \sum_{i = 1}^{n} r_{ij}\qquad \sum_{j = 1}^{k} r_{ij} = \frac{k(k + 1)}{2}\label{eq:1}
+\end{equation}
+
+\subsection*{2. Đo độ lệch của tổng hạng}
+
+Nếu nhãn điều kiện có thể hoán đổi trong mỗi khối dưới H\textsubscript{0}, hạng kỳ vọng của mỗi cột trong
+một khối là (k + 1)/2. Với n khối, tâm của tổng hạng là n(k + 1)/2. Q\textsubscript{0} tăng khi các tổng
+hạng lệch nhiều khỏi tâm này.~\cite{ref-2}
+
+\begin{equation}
+  Q_{0} = \frac{12}{nk(k + 1)} \sum_{j = 1}^{k} [ R_{j} - \frac{n(k + 1)}{2} ]^{2}\label{eq:2}
+\end{equation}
+
+\subsection*{3. Hiệu chỉnh đồng hạng}
+
+Cộng t\textsuperscript{3} \ensuremath{-} t trên mọi cụm giá trị trùng nhau trong từng khối, trong đó t là
+số giá trị của cụm. Hiệu chỉnh này tính đến phần biến thiên hạng bị giảm do thay các hạng riêng bằng hạng
+trung bình.~\cite{ref-2,ref-3}
+
+\begin{equation}
+  C = 1 - \frac{\sum (t^{3} - t)}{nk(k^{2} - 1)}\qquad Q = \frac{Q_{0}}{C}\label{eq:3}
+\end{equation}
+
+C = 1 khi không có đồng hạng. C = 0 khi mọi khối đều đồng hạng hoàn toàn và Q không xác định. Theo quy
+ước của demo, thiết kế cần từ ba điều kiện và ít nhất hai khối.
+
+\ReportSection{friedman-p}{Phương pháp Friedman}{Từ thống kê Q đến p-value}{accent}
+
+\ReportLead{Báo cáo dùng phân phối hoán vị cho ba ví dụ có ít khối và in thêm xấp xỉ \ensuremath{\chi}\textsuperscript{2} để đối chiếu.}
+
+\subsection*{Phân phối hoán vị trong từng khối}
+
+H\textsubscript{0} phát biểu các điều kiện có cùng phân phối đáp ứng trong từng khối. Để suy luận hoán vị
+chính xác, thiết kế cần cho phép coi các nhãn điều kiện là có thể hoán đổi trong mỗi khối dưới
+H\textsubscript{0}. Khi đó có k! hoán vị nhãn cho một hàng và (k!)\textsuperscript{n} tổ hợp cho n khối
+độc lập.~\cite{ref-2,ref-4}
+
+\begin{equation}
+  p_{\text{hoán vị}} = \frac{\text{Số tổ hợp có Q* \ensuremath{\geq} Q}}{(k!)^{n}}\label{eq:4}
+\end{equation}
+
+Q* là thống kê sau hoán vị. Khi có đồng hạng, nhiều hoán vị nhãn có thể tạo cùng một dãy hạng. Demo đếm
+đầy đủ các hoán vị nhãn, kể cả khi dãy hạng trùng. Hệ số C giữ nguyên vì việc đổi nhãn không làm thay
+kích thước nhóm đồng hạng.
+
+\subsection*{Cách mã đếm mà giữ phép so sánh chính xác}
+
+Hàm \textbf{\_double\_ranks} lưu d\textsubscript{ij} = 2r\textsubscript{ij}, vì hạng giữa luôn là số
+nguyên hoặc số có phần lẻ 0,5. Hàm \textbf{\_rank\_score} cộng bình phương độ lệch của tổng d theo cột.
+
+\begin{equation}
+  S = \sum_{j = 1}^{k} [ \sum_{i = 1}^{n} d_{ij} - n(k + 1) ]^{2}\qquad Q = \frac{3S}{nk(k + 1)C}\label{eq:5}
+\end{equation}
+
+Vì Q tỷ lệ thuận với S trong tất cả các tổ hợp, mã chỉ cần đếm S* \ensuremath{\geq} S bằng số nguyên. Chế
+độ \textbf{exact} giới hạn 500.000 hoán vị nhãn. Việc liệt kê tăng theo (k!)\textsuperscript{n} nên phù
+hợp với thiết kế nhỏ.
+
+\subsection*{Xấp xỉ chi bình phương}
+
+Lấy p \ensuremath{\approx} P(\ensuremath{\chi}\textsuperscript{2}\textsubscript{k\ensuremath{-}1}
+\ensuremath{\geq} Q). Độ chính xác của xấp xỉ có thể giảm khi thiết kế nhỏ. Khi bác bỏ
+H\textsubscript{0}, Friedman cho bằng chứng về khác biệt toàn cục. Xác định cặp khác biệt cần so sánh hậu
+nghiệm phù hợp và kiểm soát sai số do nhiều phép so sánh.~\cite{ref-2}
+
+\ReportSection{f1}{Ví dụ Friedman}{F1. Thời gian chạy ba thuật toán}{accent}
+
+\ReportLead{Ba thuật toán A, B và C chạy trên cùng sáu bộ dữ liệu. Mỗi bộ dữ liệu là một khối.}
+
+\textbf{H\textsubscript{0}.} Ba thuật toán có cùng phân phối thời gian chạy trong mỗi bộ dữ liệu. Giả
+định các bộ dữ liệu độc lập và có thể hoán đổi nhãn dưới H\textsubscript{0}. Thời gian thấp nhận hạng
+thấp.
+
+\ReportCaption{Bảng F1. Giá trị quan sát và hạng tăng dần trong từng khối}
+
+\begingroup\small
+\rowcolors{2}{white}{stripe}
+\begin{tabularx}{\linewidth}{>{\hsize=1.557\hsize\linewidth=\hsize\raggedright\arraybackslash}X>{\hsize=0.856\hsize\linewidth=\hsize\centering\arraybackslash}X>{\hsize=0.856\hsize\linewidth=\hsize\centering\arraybackslash}X>{\hsize=0.856\hsize\linewidth=\hsize\centering\arraybackslash}X>{\hsize=0.958\hsize\linewidth=\hsize\centering\arraybackslash}X>{\hsize=0.958\hsize\linewidth=\hsize\centering\arraybackslash}X>{\hsize=0.959\hsize\linewidth=\hsize\centering\arraybackslash}X}
+\rowcolor{accent}
+  \textcolor{white}{\textbf{Khối}} & \textcolor{white}{\textbf{A (ms)}} & \textcolor{white}{\textbf{B (ms)}} & \textcolor{white}{\textbf{C (ms)}} & \textcolor{white}{\textbf{Hạng A}} & \textcolor{white}{\textbf{Hạng B}} & \textcolor{white}{\textbf{Hạng C}} \\
+  \textbf{Bộ 1} & 12 & 10 & 8 & 3 & 2 & 1 \\
+  \textbf{Bộ 2} & 15 & 13 & 11 & 3 & 2 & 1 \\
+  \textbf{Bộ 3} & 11 & 10 & 9 & 3 & 2 & 1 \\
+  \textbf{Bộ 4} & 19 & 16 & 13 & 3 & 2 & 1 \\
+  \textbf{Bộ 5} & 16 & 14 & 15 & 3 & 1 & 2 \\
+  \textbf{Bộ 6} & 18 & 17 & 12 & 3 & 2 & 1 \\
+\rowcolor{wash}
+  \textbf{Tổng hạng} &  &  &  & \textbf{18} & \textbf{11} & \textbf{7} \\
+\bottomrule
+\end{tabularx}
+\endgroup
+
+\subsection*{Tổng hạng và thống kê}
+
+Ở bộ 1, thời gian 8, 10 và 12 ms lần lượt nhận hạng 1, 2 và 3. Cộng theo cột được R = (18; 11; 7). Mỗi
+cột có tổng hạng kỳ vọng là 6 \ensuremath{\times} 4 / 2 = 12. Không có đồng hạng nên C = 1.
+
+\begin{equation*}
+  Q = \frac{12}{6 \times  3 \times  4} [ (18 - 12)^{2} + (11 - 12)^{2} + (7 - 12)^{2} ] = \frac{31}{3}
+\end{equation*}
+
+\subsection*{Giá trị p và kết luận}
+
+Trong 6\textsuperscript{6} = 46.656 tổ hợp nhãn, 78 tổ hợp có Q* \ensuremath{\geq} Q. Phép xấp xỉ dùng
+hai bậc tự do. Sự chênh lệch giữa hai p-value xuất phát từ hai phân phối tham chiếu.
+
+\begin{equation*}
+  p_{\text{hoán vị}} = \frac{78}{46.656} \approx  0{,}001672\qquad p_{\text{xấp xỉ}} \approx  0{,}005704
+\end{equation*}
+
+\ResultBox{Bác bỏ H\textsubscript{0} ở mức 5\%}{Dữ liệu cho thấy thời gian chạy khác nhau giữa các thuật toán. C có tổng hạng thấp nhất trong mẫu. Muốn kết luận C nhanh hơn từng thuật toán còn lại cần so sánh theo cặp.}
+
+\ReportSection{f2}{Ví dụ Friedman}{F2. Điểm hài lòng có đồng hạng}{accent}
+
+\ReportLead{Năm người dùng đánh giá ba giao diện A, B, C trên thang điểm từ 1 đến 5.}
+
+\textbf{H\textsubscript{0}.} Trong từng người dùng, ba giao diện có cùng phân phối điểm hài lòng. Ví dụ
+giả định các người dùng độc lập và nhãn giao diện có thể hoán đổi trong mỗi người dưới
+H\textsubscript{0}.
+
+\ReportCaption{Bảng F2. Giá trị quan sát và hạng tăng dần trong từng khối}
+
+\begingroup\small
+\rowcolors{2}{white}{stripe}
+\begin{tabularx}{\linewidth}{>{\hsize=1.557\hsize\linewidth=\hsize\raggedright\arraybackslash}X>{\hsize=0.856\hsize\linewidth=\hsize\centering\arraybackslash}X>{\hsize=0.856\hsize\linewidth=\hsize\centering\arraybackslash}X>{\hsize=0.856\hsize\linewidth=\hsize\centering\arraybackslash}X>{\hsize=0.958\hsize\linewidth=\hsize\centering\arraybackslash}X>{\hsize=0.958\hsize\linewidth=\hsize\centering\arraybackslash}X>{\hsize=0.959\hsize\linewidth=\hsize\centering\arraybackslash}X}
+\rowcolor{accent}
+  \textcolor{white}{\textbf{Khối}} & \textcolor{white}{\textbf{A}} & \textcolor{white}{\textbf{B}} & \textcolor{white}{\textbf{C}} & \textcolor{white}{\textbf{Hạng A}} & \textcolor{white}{\textbf{Hạng B}} & \textcolor{white}{\textbf{Hạng C}} \\
+  \textbf{Người 1} & 5 & 5 & 4 & 2,5 & 2,5 & 1 \\
+  \textbf{Người 2} & 4 & 5 & 4 & 1,5 & 3 & 1,5 \\
+  \textbf{Người 3} & 3 & 4 & 4 & 1 & 2,5 & 2,5 \\
+  \textbf{Người 4} & 5 & 4 & 5 & 2,5 & 1 & 2,5 \\
+  \textbf{Người 5} & 4 & 5 & 3 & 2 & 3 & 1 \\
+\rowcolor{wash}
+  \textbf{Tổng hạng} &  &  &  & \textbf{9,5} & \textbf{12} & \textbf{8,5} \\
+\bottomrule
+\end{tabularx}
+\endgroup
+
+\subsection*{Từ hạng trung bình đến hệ số C}
+
+Người 1 chấm (5, 5, 4). Giá trị 4 có hạng 1. Hai điểm 5 cùng nhận (2 + 3)/2 = 2,5. Có bốn người xuất hiện
+một cặp đồng hạng, mỗi cặp đóng góp 2\textsuperscript{3} \ensuremath{-} 2 = 6.
+
+\begin{equation*}
+  C = 1 - \frac{4 \times  (2^{3} - 2)}{5 \times  3 \times  (3^{2} - 1)} = 0{,}8
+\end{equation*}
+
+Tâm tổng hạng bằng 10. Tổng bình phương độ lệch là (9,5 \ensuremath{-} 10)\textsuperscript{2} + (12
+\ensuremath{-} 10)\textsuperscript{2} + (8,5 \ensuremath{-} 10)\textsuperscript{2} = 6,5.
+
+\begin{equation*}
+  Q_{0} = \frac{12 \times  6{,}5}{5 \times  3 \times  4} = 1{,}3\qquad Q = \frac{1{,}3}{0{,}8} = 1{,}625
+\end{equation*}
+
+\subsection*{Giá trị p và kết luận}
+
+\begin{equation*}
+  p_{\text{hoán vị}} = \frac{4.512}{7.776} \approx  0{,}580247\qquad p_{\text{xấp xỉ}} \approx  0{,}443747
+\end{equation*}
+
+\ResultBox{Chưa đủ bằng chứng để bác bỏ H\textsubscript{0}}{Hạng của B cao nhất trong mẫu. p hoán vị lớn hơn 0,05 nên dữ liệu chưa đủ bằng chứng về khác biệt điểm hài lòng giữa ba giao diện.}
+
+\ReportSection{f3}{Ví dụ Friedman}{F3. Điểm số với bốn kiểu ôn tập}{accent}
+
+\ReportLead{Mỗi sinh viên thử đủ bốn kiểu ôn tập. Mỗi hàng là điểm của một sinh viên dưới bốn điều kiện.}
+
+\textbf{H\textsubscript{0}.} Trong từng sinh viên, bốn kiểu ôn tập có cùng phân phối điểm. Ví dụ giả định
+các sinh viên độc lập và nhãn có thể hoán đổi dưới H\textsubscript{0}.
+
+\ReportCaption{Bảng F3. Giá trị quan sát và hạng tăng dần trong từng khối}
+
+\begingroup\small
+\rowcolors{2}{white}{stripe}
+\begin{tabularx}{\linewidth}{>{\hsize=1.590\hsize\linewidth=\hsize\raggedright\arraybackslash}X>{\hsize=0.874\hsize\linewidth=\hsize\centering\arraybackslash}X>{\hsize=0.874\hsize\linewidth=\hsize\centering\arraybackslash}X>{\hsize=0.874\hsize\linewidth=\hsize\centering\arraybackslash}X>{\hsize=0.874\hsize\linewidth=\hsize\centering\arraybackslash}X>{\hsize=0.979\hsize\linewidth=\hsize\centering\arraybackslash}X>{\hsize=0.979\hsize\linewidth=\hsize\centering\arraybackslash}X>{\hsize=0.979\hsize\linewidth=\hsize\centering\arraybackslash}X>{\hsize=0.977\hsize\linewidth=\hsize\centering\arraybackslash}X}
+\rowcolor{accent}
+  \textcolor{white}{\textbf{Khối}} & \textcolor{white}{\textbf{A}} & \textcolor{white}{\textbf{B}} & \textcolor{white}{\textbf{C}} & \textcolor{white}{\textbf{D}} & \textcolor{white}{\textbf{Hạng A}} & \textcolor{white}{\textbf{Hạng B}} & \textcolor{white}{\textbf{Hạng C}} & \textcolor{white}{\textbf{Hạng D}} \\
+  \textbf{SV 1} & 80 & 82 & 84 & 86 & 1 & 2 & 3 & 4 \\
+  \textbf{SV 2} & 76 & 72 & 74 & 70 & 4 & 2 & 3 & 1 \\
+  \textbf{SV 3} & 89 & 85 & 83 & 87 & 4 & 2 & 1 & 3 \\
+  \textbf{SV 4} & 73 & 77 & 71 & 75 & 2 & 4 & 1 & 3 \\
+\rowcolor{wash}
+  \textbf{Tổng hạng} &  &  &  &  & \textbf{11} & \textbf{10} & \textbf{8} & \textbf{11} \\
+\bottomrule
+\end{tabularx}
+\endgroup
+
+\subsection*{Tổng hạng và thống kê}
+
+Sinh viên 1 đạt (80; 82; 84; 86) nên có hạng (1; 2; 3; 4). Tổng hạng theo cột là (11; 10; 8; 11), gần tâm
+4 \ensuremath{\times} 5 / 2 = 10. Không có đồng hạng nên Q = Q\textsubscript{0}.
+
+\begin{equation*}
+  Q = \frac{12}{4 \times  4 \times  5} [ (11 - 10)^{2} + (10 - 10)^{2} + (8 - 10)^{2} + (11 - 10)^{2} ] = 0{,}9
+\end{equation*}
+
+\subsection*{Giá trị p và kết luận}
+
+Tổng số tổ hợp là 24\textsuperscript{4} = 331.776. Có 298.728 tổ hợp đạt Q* \ensuremath{\geq} Q. Cách xấp
+xỉ dùng ba bậc tự do.
+
+\begin{equation*}
+  p_{\text{hoán vị}} = \frac{298.728}{331.776} \approx  0{,}900391\qquad p_{\text{xấp xỉ}} \approx  0{,}825428
+\end{equation*}
+
+\ResultBox{Chưa đủ bằng chứng để bác bỏ H\textsubscript{0}}{Bốn khối cho ít thông tin về khác biệt. Khi triển khai thí nghiệm thực, cần cân bằng độ khó bài kiểm tra, kiểm soát thứ tự và ảnh hưởng từ kiểu ôn tập trước.}
+
+\ReportSection{pearson}{Phương pháp Pearson}{Tần số kỳ vọng và bậc tự do}{rust}
+
+\ReportLead{Tính số đếm kỳ vọng theo H\textsubscript{0}, chuẩn hóa sai lệch của từng ô rồi cộng các đóng góp.}
+
+\subsection*{Độ phù hợp với xác suất cho trước}
+
+Với m loại, H\textsubscript{0} quy định xác suất p\textsubscript{1}, \ldots{}, p\textsubscript{m} trước
+khi lấy mẫu. Nếu có N quan sát, kỳ vọng của loại i là Np\textsubscript{i}. Tổng N cố định tạo một ràng
+buộc nên df = m \ensuremath{-} 1. Khi ước lượng tham số từ dữ liệu, cách xác định df phụ thuộc mô hình và
+cách ước lượng.~\cite{ref-6}
+
+\begin{equation}
+  E_{i} = Np_{i}\qquad \mathrm{df} = m - 1\label{eq:6}
+\end{equation}
+
+\subsection*{Tính độc lập và tính đồng nhất}
+
+Độc lập dùng một mẫu, quan sát hai biến phân loại trên mỗi đơn vị. Đồng nhất lấy mẫu độc lập từ các nhóm
+rồi so sánh phân phối của một biến. Cả hai dùng cùng kỳ vọng bảng chéo. Gọi R\textsubscript{i},
+C\textsubscript{j} lần lượt là tổng hàng i và cột j.~\cite{ref-7,ref-8}
+
+\begin{equation}
+  E_{ij} = N \times  \frac{R_{i}}{N} \times  \frac{C_{j}}{N} = \frac{R_{i} C_{j}}{N}\qquad \mathrm{df} = (r - 1)(c - 1)\label{eq:7}
+\end{equation}
+
+Bảng đầy đủ có rc \ensuremath{-} 1 xác suất tự do. Mô hình dưới H\textsubscript{0} chỉ cần r
+\ensuremath{-} 1 xác suất hàng và c \ensuremath{-} 1 xác suất cột. Hiệu số bằng (r \ensuremath{-} 1)(c
+\ensuremath{-} 1).~\cite{ref-8}
+
+\subsection*{Thống kê chung và điều kiện xấp xỉ}
+
+\begin{equation}
+  \chi ^{2}_{obs} = \sum_{\text{các ô}} \frac{(O - E)^{2}}{E}\qquad p \approx  P(\chi ^{2}_{df} \geq  \chi ^{2}_{obs})\label{eq:8}
+\end{equation}
+
+Các đơn vị cần độc lập và được đếm một lần. Bảng chéo dùng quy tắc thực hành E \ensuremath{\geq} 1 ở mọi
+ô và ít nhất 80\% ô có E \ensuremath{\geq} 5. Với độ phù hợp, demo cảnh báo khi có E \textless{} 5. Một ô
+có O = 0 vẫn tính được nếu E dương. Tổng hàng hoặc cột bằng 0 làm công thức chuẩn của bảng đầy đủ mất
+hiệu lực.~\cite{ref-6,ref-7,ref-8}
+
+\ReportSection{c1}{Ví dụ Pearson}{C1. Xúc xắc và phân phối đều}{rust}
+
+\ReportLead{Một mẫu gồm 120 lần gieo độc lập. Mỗi lần gieo đóng góp đúng một mặt.}
+
+\textbf{H\textsubscript{0}.} Sáu mặt đều có xác suất bằng 1/6. Giả thuyết đối cho phép ít nhất một xác
+suất khác 1/6.
+
+\subsection*{Tần số kỳ vọng và đóng góp}
+
+Nếu H\textsubscript{0} đúng, kỳ vọng mỗi mặt là 120 \ensuremath{\times} 1/6 = 20. Mặt 1 xuất hiện 14 lần,
+do đó sai lệch là \ensuremath{-}6 và đóng góp là 36/20 = 1,8.
+
+\ReportCaption{Bảng C1. Quan sát, kỳ vọng và đóng góp của từng mặt}
+
+\begingroup\small
+\rowcolors{2}{white}{stripe}
+\begin{tabularx}{\linewidth}{>{\hsize=2.217\hsize\linewidth=\hsize\raggedright\arraybackslash}X>{\hsize=0.767\hsize\linewidth=\hsize\centering\arraybackslash}X>{\hsize=0.767\hsize\linewidth=\hsize\centering\arraybackslash}X>{\hsize=0.767\hsize\linewidth=\hsize\centering\arraybackslash}X>{\hsize=0.767\hsize\linewidth=\hsize\centering\arraybackslash}X>{\hsize=0.767\hsize\linewidth=\hsize\centering\arraybackslash}X>{\hsize=0.767\hsize\linewidth=\hsize\centering\arraybackslash}X>{\hsize=1.181\hsize\linewidth=\hsize\centering\arraybackslash}X}
+\rowcolor{rust}
+  \textcolor{white}{\textbf{Mặt}} & \textcolor{white}{\textbf{1}} & \textcolor{white}{\textbf{2}} & \textcolor{white}{\textbf{3}} & \textcolor{white}{\textbf{4}} & \textcolor{white}{\textbf{5}} & \textcolor{white}{\textbf{6}} & \textcolor{white}{\textbf{Tổng}} \\
+  \textbf{Quan sát O} & 14 & 22 & 18 & 20 & 24 & 22 & 120 \\
+  \textbf{Kỳ vọng E} & 20 & 20 & 20 & 20 & 20 & 20 & 120 \\
+\rowcolor{wash}
+  \textbf{(O \ensuremath{-} E)\textsuperscript{2}/E} & \textbf{1,8} & \textbf{0,2} & \textbf{0,2} & \textbf{0} & \textbf{0,8} & \textbf{0,2} & \textbf{3,2} \\
+\bottomrule
+\end{tabularx}
+\endgroup
+
+\subsection*{Thống kê và bậc tự do}
+
+\begin{equation*}
+  \chi ^{2} = \frac{(14 - 20)^{2}}{20} + 0{,}2 + 0{,}2 + 0 + 0{,}8 + 0{,}2 = 3{,}2
+\end{equation*}
+
+Có 6 loại, xác suất xác định trước, nên df = 6 \ensuremath{-} 1 = 5. Mọi E = 20 đều vượt ngưỡng dùng
+trong demo.
+
+\begin{equation*}
+  p \approx  P(\chi ^{2}_{5} \geq  3{,}2) \approx  0{,}669183
+\end{equation*}
+
+\ResultBox{Chưa đủ bằng chứng để bác bỏ H\textsubscript{0}}{Với \ensuremath{\alpha} = 0,05, số đếm quan sát chưa cho đủ bằng chứng rằng xác suất các mặt khác mô hình xúc xắc công bằng.}
+
+\ReportSection{c2}{Ví dụ Pearson}{C2. Phương pháp học và kết quả}{rust}
+
+\ReportLead{Mỗi sinh viên trong mẫu có một phương pháp học và một kết quả thi nhị phân.}
+
+\textbf{H\textsubscript{0}.} Phương pháp học và kết quả thi độc lập. Giả thuyết đối cho phép tỉ lệ đạt
+thay đổi theo phương pháp.
+
+\ReportCaption{Bảng C2a. Tần số quan sát và tổng biên}
+
+\begingroup\small
+\rowcolors{2}{white}{stripe}
+\begin{tabularx}{\linewidth}{>{\hsize=1.297\hsize\linewidth=\hsize\raggedright\arraybackslash}X>{\hsize=0.928\hsize\linewidth=\hsize\centering\arraybackslash}X>{\hsize=0.928\hsize\linewidth=\hsize\centering\arraybackslash}X>{\hsize=0.847\hsize\linewidth=\hsize\centering\arraybackslash}X}
+\rowcolor{rust}
+  \textcolor{white}{\textbf{Phương pháp}} & \textcolor{white}{\textbf{Đạt}} & \textcolor{white}{\textbf{Chưa đạt}} & \textcolor{white}{\textbf{Tổng}} \\
+  \textbf{Nhóm A} & 36 & 14 & 50 \\
+  \textbf{Nhóm B} & 24 & 26 & 50 \\
+\rowcolor{wash}
+  \textbf{Tổng} & \textbf{60} & \textbf{40} & \textbf{100} \\
+\bottomrule
+\end{tabularx}
+\endgroup
+
+\subsection*{Từ tổng biên đến tần số kỳ vọng}
+
+Có 50 sinh viên dùng phương pháp A và 60 sinh viên đạt trong tổng số 100. Khi độc lập, tỉ lệ đạt kỳ vọng
+ở mỗi phương pháp là 0,60.
+
+\begin{equation*}
+  E_{\text{A, đạt}} = \frac{50 \times  60}{100} = 30\qquad E_{\text{A, chưa đạt}} = \frac{50 \times  40}{100} = 20
+\end{equation*}
+
+\ReportCaption{Bảng C2b. Tần số kỳ vọng và đóng góp Pearson theo từng ô}
+
+\begingroup\small
+\rowcolors{2}{white}{stripe}
+\begin{tabularx}{\linewidth}{>{\hsize=1.045\hsize\linewidth=\hsize\raggedright\arraybackslash}X>{\hsize=0.730\hsize\linewidth=\hsize\centering\arraybackslash}X>{\hsize=0.953\hsize\linewidth=\hsize\centering\arraybackslash}X>{\hsize=1.085\hsize\linewidth=\hsize\centering\arraybackslash}X>{\hsize=1.187\hsize\linewidth=\hsize\centering\arraybackslash}X}
+\rowcolor{rust}
+  \textcolor{white}{\textbf{Phương pháp}} & \textcolor{white}{\textbf{E đạt}} & \textcolor{white}{\textbf{E chưa đạt}} & \textcolor{white}{\textbf{Đóng góp đạt}} & \textcolor{white}{\textbf{Đóng góp chưa đạt}} \\
+  \textbf{Nhóm A} & 30 & 20 & 1,2 & 1,8 \\
+  \textbf{Nhóm B} & 30 & 20 & 1,2 & 1,8 \\
+\bottomrule
+\end{tabularx}
+\endgroup
+
+\begin{equation*}
+  \chi ^{2} = 1{,}2 + 1{,}8 + 1{,}2 + 1{,}8 = 6\qquad \mathrm{df} = 1\qquad p \approx  0{,}014306
+\end{equation*}
+
+Tất cả E đều từ 20 trở lên. Dùng thống kê Pearson nguyên bản cho bảng 2 \ensuremath{\times} 2 và tính p
+theo công thức~\eqref{eq:8}.
+
+\ResultBox{Bác bỏ H\textsubscript{0} ở mức 5\%}{Phương pháp học và kết quả thi có liên hệ trong thiết kế này. Tỉ lệ đạt quan sát là 36/50 = 72\% ở A và 24/50 = 48\% ở B. Cần thiết kế phù hợp để suy luận tác động nhân quả.}
+
+\ReportSection{c3}{Ví dụ Pearson}{C3. Lựa chọn màu theo chi nhánh}{rust}
+
+\ReportLead{Ba mẫu riêng, mỗi mẫu gồm 50 khách hàng của một chi nhánh. Mỗi người chọn một màu.}
+
+\textbf{H\textsubscript{0}.} Phân phối lựa chọn xanh, trắng và đen giống nhau giữa ba chi nhánh.
+
+\ReportCaption{Bảng C3a. Tần số quan sát và tổng biên}
+
+\begingroup\small
+\rowcolors{2}{white}{stripe}
+\begin{tabularx}{\linewidth}{>{\hsize=1.316\hsize\linewidth=\hsize\raggedright\arraybackslash}X>{\hsize=0.941\hsize\linewidth=\hsize\centering\arraybackslash}X>{\hsize=0.941\hsize\linewidth=\hsize\centering\arraybackslash}X>{\hsize=0.941\hsize\linewidth=\hsize\centering\arraybackslash}X>{\hsize=0.861\hsize\linewidth=\hsize\centering\arraybackslash}X}
+\rowcolor{rust}
+  \textcolor{white}{\textbf{Chi nhánh}} & \textcolor{white}{\textbf{Xanh}} & \textcolor{white}{\textbf{Trắng}} & \textcolor{white}{\textbf{Đen}} & \textcolor{white}{\textbf{Tổng}} \\
+  \textbf{CN 1} & 30 & 15 & 5 & 50 \\
+  \textbf{CN 2} & 20 & 20 & 10 & 50 \\
+  \textbf{CN 3} & 10 & 25 & 15 & 50 \\
+\rowcolor{wash}
+  \textbf{Tổng} & \textbf{60} & \textbf{60} & \textbf{30} & \textbf{150} \\
+\bottomrule
+\end{tabularx}
+\endgroup
+
+\subsection*{Tỉ lệ gộp, kỳ vọng và đóng góp}
+
+Tỉ lệ gộp của ba màu là 60/150, 60/150 và 30/150. Nhân với cỡ mẫu 50 cho kỳ vọng (20; 20; 10) ở từng chi
+nhánh. Ví dụ, ô Xanh của CN 1 đóng góp (30 \ensuremath{-} 20)\textsuperscript{2}/20 = 5.
+
+\ReportCaption{Bảng C3b. Đóng góp Pearson của từng ô}
+
+\begingroup\small
+\rowcolors{2}{white}{stripe}
+\begin{tabularx}{\linewidth}{>{\hsize=1.197\hsize\linewidth=\hsize\raggedright\arraybackslash}X>{\hsize=0.943\hsize\linewidth=\hsize\centering\arraybackslash}X>{\hsize=0.943\hsize\linewidth=\hsize\centering\arraybackslash}X>{\hsize=0.943\hsize\linewidth=\hsize\centering\arraybackslash}X>{\hsize=0.974\hsize\linewidth=\hsize\centering\arraybackslash}X}
+\rowcolor{rust}
+  \textcolor{white}{\textbf{Chi nhánh}} & \textcolor{white}{\textbf{Xanh}} & \textcolor{white}{\textbf{Trắng}} & \textcolor{white}{\textbf{Đen}} & \textcolor{white}{\textbf{Tổng hàng}} \\
+  \textbf{CN 1} & 5 & 1,25 & 2,5 & 8,75 \\
+  \textbf{CN 2} & 0 & 0 & 0 & 0 \\
+  \textbf{CN 3} & 5 & 1,25 & 2,5 & 8,75 \\
+\rowcolor{wash}
+  \textbf{Tổng} & \textbf{10} & \textbf{2,5} & \textbf{5} & \textbf{17,5} \\
+\bottomrule
+\end{tabularx}
+\endgroup
+
+\begin{equation*}
+  \chi ^{2} = 8{,}75 + 0 + 8{,}75 = 17{,}5\qquad \mathrm{df} = (3 - 1)(3 - 1) = 4
+\end{equation*}
+
+Mọi kỳ vọng đều từ 10 trở lên. Xác suất đuôi phải P(\ensuremath{\chi}\textsuperscript{2}\textsubscript{4}
+\ensuremath{\geq} 17,5) \ensuremath{\approx} 0,001545.
+
+\ResultBox{Bác bỏ H\textsubscript{0} ở mức 5\%}{Có bằng chứng rằng phân phối màu khác nhau giữa ít nhất hai chi nhánh. CN 1 và CN 3 đóng góp lớn nhất vào \ensuremath{\chi}\textsuperscript{2}. Đóng góp từng ô giúp mô tả mẫu, còn kết luận theo từng ô cần phân tích bổ sung.}
+
+\ReportSection{python}{Cài đặt và tái lập}{Cách mã Python tính và chạy}{accent}
+
+\ReportLead{Mã sử dụng thư viện chuẩn Python 3.9 trở lên. Các bảng trong báo cáo lấy dữ liệu và kết quả từ cùng mã demo.}
+
+\subsection*{Tính xác suất đuôi phải của \ensuremath{\chi}\textsuperscript{2}}
+
+Với thống kê t và df = \ensuremath{\nu}, đặt a = \ensuremath{\nu}/2 và x = t/2. Q(a, x) dưới đây là hàm
+gamma không đầy đủ phía trên đã chuẩn hóa. Ký hiệu Q trên các trang Friedman chỉ thống kê kiểm
+định.~\cite{ref-13}
+
+\begin{equation}
+  p = P(\chi ^{2}_{\nu } \geq  t) = Q(a, x) = \frac{\Gamma (a, x)}{\Gamma (a)}\qquad a = \nu /2,\qquad x = t/2\label{eq:9}
+\end{equation}
+
+Nếu \ensuremath{\nu} chẵn, bắt đầu từ Q(1, x) = exp(\ensuremath{-}x). Nếu \ensuremath{\nu} lẻ, bắt đầu từ
+Q(½, x) = erfc(\ensuremath{\surd}x). Tăng a từng đơn vị tới \ensuremath{\nu}/2 theo công thức truy
+hồi.~\cite{ref-13}
+
+\begin{equation}
+  Q(a + 1, x) = Q(a, x) + \frac{x^{a} \exp(-x)}{\Gamma (a + 1)}\label{eq:10}
+\end{equation}
+
+Hàm \textbf{chi\_square\_sf} tính số hạng cộng dưới dạng exp[a log(x) \ensuremath{-} x \ensuremath{-}
+lgamma(a + 1)]. Tính đuôi phải trực tiếp giúp tránh mất chữ số khi p nhỏ. Ví dụ C3 có a = 2, x = 8,75 nên
+p \ensuremath{\approx} exp(\ensuremath{-}8,75) \ensuremath{\times} (1 + 8,75).
+
+\subsection*{Hàm kiểm định trong mã nguồn}
+
+Hàm \textbf{friedman} nhận ma trận khối đầy đủ. Hàm \textbf{chi\_square\_goodness\_of\_fit} nhận số đếm
+và xác suất cho trước. Hàm \textbf{chi\_square\_contingency} nhận bảng tần số cho độc lập hoặc đồng nhất.
+Pearson trả cả E và đóng góp từng ô để kiểm tra lại phép tính.\\\hyperref[sec:demo-guide]{\textbf{Hướng
+dẫn chạy demo ở trang 13.}}
+
+\ResultBox{Phạm vi suy luận}{Ví dụ giả lập minh họa phép tính. Khi báo cáo dữ liệu thực, nêu thiết kế, giả định, thống kê, bậc tự do nếu dùng phân phối \ensuremath{\chi}\textsuperscript{2}, cách tính p và giới hạn của kết luận.}
+
+\ReportSection{demo-guide}{Hướng dẫn chạy demo}{Cách chạy và đọc kết quả}{accent}
+
+\ReportLead{Chạy trực tiếp từ thư mục giải nén với Python 3.9 trở lên. Demo dùng thư viện chuẩn của Python.}
+
+\subsection*{1. Mở thư mục chứa demo.py}
+
+Giải nén ZIP. Giữ \textbf{demo.py} và \textbf{nonparametric\_tests.py} trong cùng thư mục. Mở Terminal
+hoặc PowerShell, nhập lệnh bên dưới và thay phần trong ngoặc kép bằng đường dẫn thư mục vừa giải nén.
+
+\begin{verbatim}
+cd "đường dẫn tới thư mục giải nén"
+\end{verbatim}
+
+\subsection*{2. Chạy toàn bộ hoặc chọn ví dụ}
+
+\begingroup\small
+\rowcolors{2}{white}{stripe}
+\begin{tabularx}{\linewidth}{>{\hsize=0.913\hsize\linewidth=\hsize\raggedright\arraybackslash}X>{\hsize=1.065\hsize\linewidth=\hsize\raggedright\arraybackslash}X>{\hsize=1.022\hsize\linewidth=\hsize\raggedright\arraybackslash}X}
+\rowcolor{accent}
+  \textcolor{white}{\textbf{Tác vụ}} & \textcolor{white}{\textbf{macOS / Linux}} & \textcolor{white}{\textbf{Windows}} \\
+  \textbf{Kiểm tra phiên bản} & \texttt{python3 --version} & \texttt{py -3 --version} \\
+  \textbf{Chạy cả sáu ví dụ} & \texttt{python3 demo.py} & \texttt{py -3 demo.py} \\
+  \textbf{Chạy F2 rồi C2} & \texttt{python3 demo.py F2 C2} & \texttt{py -3 demo.py F2 C2} \\
+  \textbf{Xem hướng dẫn lệnh} & \texttt{python3 demo.py --help} & \texttt{py -3 demo.py --help} \\
+\bottomrule
+\end{tabularx}
+\endgroup
+
+Mã F1 đến F3 chạy Friedman. Mã C1 đến C3 chạy Pearson. Viết hoa mã và cách nhau bằng dấu cách. Để chạy
+riêng F2, bỏ C2 khỏi lệnh trên. Trên Windows, nếu hệ thống nhận lệnh \textbf{python}, có thể thay
+\textbf{py -3} bằng \textbf{python}.
+
+\subsection*{3. Đối chiếu kết quả với lời giải}
+
+\hyperref[sec:f2]{\textbf{F2 · Friedman}}. Xem bảng hạng, hệ số đồng hạng C và thống kê Q. Demo dùng
+\textbf{p hoán vị = 0.580247} để kết luận chưa đủ bằng chứng bác bỏ H\textsubscript{0}. Giá trị p xấp xỉ
+được in để đối chiếu.
+
+\hyperref[sec:c2]{\textbf{C2 · Pearson}}. Đối chiếu O với E rồi cộng bốn đóng góp để được
+\ensuremath{\chi}\textsuperscript{2} = 6. Với df = 1, \textbf{p = 0.0143059} nhỏ hơn 0.05 nên bác bỏ
+H\textsubscript{0} về tính độc lập.
+
+\ResultBox{Khi terminal báo thiếu tệp}{Kiểm tra thư mục hiện tại bằng \textbf{ls} trên macOS/Linux hoặc \textbf{dir} trên Windows. Nếu báo thiếu \textbf{nonparametric\_tests}, kiểm tra hai tệp Python đã được giải nén cạnh nhau.}
+
+\clearpage
+
+\renewcommand{\refname}{Tài liệu tham khảo}
+
+\phantomsection\addcontentsline{toc}{section}{Tài liệu tham khảo}
+
+\begin{thebibliography}{99}
+
+\bibitem{ref-1}
+  Friedman, M. (1937). \emph{The Use of Ranks to Avoid the Assumption of Normality Implicit in the Analysis of Variance.} Journal of the American Statistical Association, 32(200), 675-701.
+  \href{https://doi.org/10.1080/01621459.1937.10503522}{DOI 10.1080/01621459.1937.10503522}
+
+\bibitem{ref-2}
+  NIST Dataplot. \emph{Friedman Test.} Thiết kế khối đầy đủ, thống kê hạng và tham chiếu \ensuremath{\chi}\textsuperscript{2}.
+  \href{https://www.itl.nist.gov/div898/software/dataplot/refman1/auxillar/friedman.htm}{Dataplot Reference Manual}
+
+\bibitem{ref-3}
+  Minitab. \emph{Methods and Formulas for Friedman Test.} Quy tắc hạng trung bình và hiệu chỉnh đồng hạng.
+  \href{https://support.minitab.com/en-us/minitab/help-and-how-to/statistics/nonparametrics/how-to/friedman-test/methods-and-formulas/methods-and-formulas/}{Minitab Support}
+
+\bibitem{ref-4}
+  Hothorn, T., Hornik, K., van de Wiel, M. A., \& Zeileis, A. (2008). \emph{Implementing a Class of Permutation Tests: The coin Package.} Journal of Statistical Software, 28(8), 1-23.
+  \href{https://doi.org/10.18637/jss.v028.i08}{DOI 10.18637/jss.v028.i08}
+
+\bibitem{ref-5}
+  Pearson, K. (1900). \emph{On the Criterion That a Given System of Deviations from the Probable \ldots{}} Philosophical Magazine, 50(302), 157-175.
+  \href{https://doi.org/10.1080/14786440009463897}{DOI 10.1080/14786440009463897}
+
+\bibitem{ref-6}
+  NIST/SEMATECH. \emph{Chi-Square Goodness-of-Fit Test.} e-Handbook of Statistical Methods, mục 1.3.5.15.
+  \href{https://www.itl.nist.gov/div898/handbook/eda/section3/eda35f.htm}{NIST e-Handbook}
+
+\bibitem{ref-7}
+  NIST Dataplot. \emph{Chi-Square Independence Test.} Thống kê Pearson, kỳ vọng và tổng biên trong bảng chéo.
+  \href{https://www.itl.nist.gov/div898/software/dataplot/refman1/auxillar/chistest.htm}{Dataplot Reference Manual}
+
+\bibitem{ref-8}
+  Penn State. \emph{Two-Way Tables: Independence and Association.} STAT 504, bài 3. Bậc tự do và điều kiện xấp xỉ.
+  \href{https://online.stat.psu.edu/stat504/Lesson03}{Analysis of Discrete Data}
+
+\bibitem{ref-9}
+  R Core Team. \emph{Wilcoxon Rank Sum and Signed Rank Tests.}
+  \href{https://stat.ethz.ch/R-manual/R-devel/library/stats/html/wilcox.test.html}{R stats · wilcox.test}
+
+\bibitem{ref-10}
+  R Core Team. \emph{Kruskal-Wallis Rank Sum Test.}
+  \href{https://stat.ethz.ch/R-manual/R-devel/library/stats/html/kruskal.test.html}{R stats · kruskal.test}
+
+\bibitem{ref-11}
+  R Core Team. \emph{Fisher’s Exact Test for Count Data.}
+  \href{https://stat.ethz.ch/R-manual/R-devel/library/stats/html/fisher.test.html}{R stats · fisher.test}
+
+\bibitem{ref-12}
+  R Core Team. \emph{McNemar’s Chi-squared Test for Count Data.}
+  \href{https://stat.ethz.ch/R-manual/R-devel/library/stats/html/mcnemar.test.html}{R stats · mcnemar.test}
+
+\bibitem{ref-13}
+  NIST. \emph{Chi-Square Distribution và Incomplete Gamma Functions.} e-Handbook và Digital Library of Mathematical Functions, mục 8.4 và 8.8.
+  \href{https://www.itl.nist.gov/div898/handbook/eda/section3/eda3666.htm}{Phân phối \ensuremath{\chi}\textsuperscript{2}}
+  \href{https://dlmf.nist.gov/8.4}{Giá trị đặc biệt}
+  \href{https://dlmf.nist.gov/8.8.E6}{Công thức 8.8.6}
+
+\end{thebibliography}
+
+\end{document}
